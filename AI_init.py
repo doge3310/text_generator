@@ -99,6 +99,7 @@ for index in range(len(rlt.learn_text) * LEARN_COEF):
         x = torch.tensor(x, dtype=torch.float32)
         y = torch.tensor([y], dtype=torch.float32)
 
+        optimizer.zero_grad()
         y_pred = NN.forward(x)
 
         val_loss = loss(y_pred, y)

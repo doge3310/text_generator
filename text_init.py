@@ -1,7 +1,7 @@
 import apps
 from numpy import array
 
-file = open("E:/codes/Python/AI/NLP_AI\AI.txt", "r", encoding="utf-8")
+file = open(".\AI.txt", "r", encoding="utf-8")
 learning_text = file.read()
 TEST_TEXT = """Чтобы понять, почему мы это делаем"""
 TEXT_LENTH = 100
