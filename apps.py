@@ -186,13 +186,30 @@ def min_max_normalizer(x: list):
         x (list): list of data
 
     Returns:
-        (list): normalize data
+        (list): normalized data
     """
-
     x = np.array(x)
     min_value = np.min(x)
     max_value = np.max(x)
 
-    normalized_data = (x - min_value) / (max_value - min_value)
+    normalized_data = (x - min_value) / (max_value - min_value + 0.01)
 
     return normalized_data
+
+
+def list_to_matrix(lenth: int, lst: list):
+    """generate matrix from list
+
+    Args:
+        lenth (int): lenth of matrix string
+        lst (list): list to generate matrix
+
+    Returns:
+        (list[list]): matrix from list
+    """
+    output = []
+
+    for index in range(int(len(lst) / lenth) + 1):
+        output.append(lst[index * lenth: (index + 1) * lenth])
+
+    return output
