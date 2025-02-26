@@ -1,21 +1,18 @@
-import apps
-from numpy import array
+import regex as re
 
-file = open(".\AI.txt", "r", encoding="utf-8")
+file = open("./AI.txt", "r", encoding="utf-8")
 learning_text = file.read()
 TEST_TEXT = """Чтобы понять, почему мы это делаем"""
-TEXT_LENTH = 100
+TEXT_LENTH = 65
 
-learning_text_tf = apps.tf_generator(learning_text)
-learning_text_idf = apps.idf_generator(learning_text, TEXT_LENTH)
-learn_tf_idf = apps.min_max_normalizer(array(learning_text_tf) * array(learning_text_idf))
-learn_tf_idf = learn_tf_idf.tolist()
-learn_text = []
+learning_text = re.sub(r'[^\pL\p{Space}]', '', learning_text)
+learning_text = learning_text.lower().replace("/n", "").split(" ")
+learn_list = list(set(learning_text))
+index = 0
+src = [[] for _ in range(int(len(learning_text) / TEXT_LENTH) + 1)]
 
-for index in range(int(len(learning_text_tf) / TEXT_LENTH) + 1):
-    element: list = learn_tf_idf[TEXT_LENTH * index: TEXT_LENTH * (index + 1)]
-    learn_text.append(element)
+for w_index, word in enumerate(learning_text):
+    if w_index % TEXT_LENTH == 0 and w_index != 0:
+        index += 1
 
-if __name__ == "__main__":
-    for i in learn_text:
-        print(i)
+    src[index].append(learn_list.index(word) / 1000)
