@@ -1,6 +1,7 @@
 """Generate text
 """
 import AI_init as ai
+import AI_learn
 
 
 def generate_text(lenth_text: int):
