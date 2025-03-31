@@ -1,15 +1,18 @@
 """Generate text
 """
+import torch
 import AI_init as ai
 import AI_learn
+import text_init
 
 
-def generate_text(lenth_text: int):
-    pass
+def generate_text():
+    with torch.no_grad():
+        pass
 
 
 if __name__ == "__main__":
-    print(generate_text(20))
+    print(generate_text())
 
 
 # y_pred = torch.tensor(rlt.three_gramm_l[-1], dtype=torch.float32)
