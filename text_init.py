@@ -1,5 +1,4 @@
 import regex as re
-import torch
 
 
 file = open("./AI.txt", "r", encoding="utf-8")
@@ -17,6 +16,5 @@ for w_index, word in enumerate(learning_text):
     if w_index % TEXT_LENTH == 0 and w_index != 0:
         index += 1
 
-    src[index].append([learn_list.index(item) for item in learning_text[TEXT_LENTH * index: TEXT_LENTH * (index + 1)]])
-
-print(torch.tensor(src).size())
+    src[index].append([learn_list.index(item) for item in
+                       learning_text[TEXT_LENTH * index: TEXT_LENTH * (index + 1)]])
