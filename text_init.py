@@ -1,20 +1,35 @@
 import regex as re
 
 
+def tokenize(text: str, batch_size: int):
+    """generate tokenized text and dict
+
+    Args:
+        text (str): row text
+        batch_size (int): size of batch
+
+    Returns:
+        (list):
+            - source (list[list]): tokenized, devided by batches text
+            - learn_list (list): list of unique words
+    """
+    clear_text = re.sub(r'[^\pL\p{Space}]', '', text)
+    clear_text = clear_text.lower().replace("/n", "").split(" ")
+    learn_list = list(set(clear_text))
+
+    word_indices = [learn_list.index(word) for word in clear_text]
+
+    elements = [word_indices[i: i + batch_size] +
+                ([0] * (batch_size - len(word_indices[i: i + batch_size])))
+                for i in range(0, len(word_indices), batch_size)]
+
+    source = [elements[i: i + batch_size]
+              for i in range(0, len(elements), batch_size)]
+
+    return source, learn_list
+
+
 file = open("./AI.txt", "r", encoding="utf-8")
 learning_text = file.read()
-TEST_TEXT = """Чтобы понять, почему мы это делаем"""
 TEXT_LENTH = 60
-
-learning_text = re.sub(r'[^\pL\p{Space}]', '', learning_text)
-learning_text = learning_text.lower().replace("/n", "").split(" ")
-learn_list = list(set(learning_text))
-index = 0
-src = [[] for _ in range(int(len(learning_text) / TEXT_LENTH))]
-
-for w_index, word in enumerate(learning_text):
-    if w_index % TEXT_LENTH == 0 and w_index != 0:
-        index += 1
-
-    src[index].append([learn_list.index(item) for item in
-                       learning_text[TEXT_LENTH * index: TEXT_LENTH * (index + 1)]])
+src, learn_dict = tokenize(learning_text, TEXT_LENTH)

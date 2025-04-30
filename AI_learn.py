@@ -6,22 +6,20 @@ import text_init as learn_t
 source = learn_t.src
 AI_init.transformer.train()
 
-for epoch in range(100):
+for epoch in range(50):
     for batch in range(len(learn_t.src)):
         src = torch.tensor(source[batch][: -1], dtype=int)
         tgt = torch.tensor(source[batch][1:], dtype=int)
+
+        print(tgt.size(), src.size())
 
         AI_init.optimizer.zero_grad()
         output = AI_init.transformer(src=src,
                                      tgt=tgt)
 
-        loss = AI_init.loss(output.view(-1, len(learn_t.learn_list)),
+        loss = AI_init.loss(output.view(-1, len(learn_t.learn_dict)),
                             tgt.view(-1))
         loss.backward()
         AI_init.optimizer.step()
 
-    print(epoch,
-          loss,
-          src,
-          tgt,
-          output.size())
+    print(epoch, loss, src.size(), tgt.size(), output.size())

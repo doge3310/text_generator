@@ -12,9 +12,8 @@ class PositionalEncoding(nn.Module):
         position = torch.arange(0,
                                 seq_length,
                                 dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0,
-                                          d_model,
-                                          2).float() * -(math.log(10000.0) / d_model))
+        div_term = torch.exp(torch.arange(0, d_model, 2)
+                             .float() * -(math.log(10000.0) / d_model))
 
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -39,10 +38,11 @@ class Transformer(torch.nn.Module):
 
         self.transformer = torch.nn.Transformer(num_encoder_layers=2,
                                                 num_decoder_layers=2,
-                                                dim_feedforward=1024,
+                                                dim_feedforward=256,
                                                 dropout=0.3,
                                                 d_model=d_model,
-                                                nhead=4)
+                                                nhead=4,
+                                                batch_first=True)
 
         self.ff = nn.Linear(d_model, num_tokens)
 
@@ -58,8 +58,21 @@ class Transformer(torch.nn.Module):
 
         return result
 
+    def generate(self, src):
+        tgt = src + [0 for _ in range(self.seq_lenth - len(src))]
+        tgt = torch.tensor(tgt)
+        src = tgt
 
-transformer = Transformer(num_tokens=len(text_init.learn_list),
+        for word_index in range(len(src) - self.seq_lenth, self.seq_lenth - 1):
+            output = self.forward(src,
+                                  tgt.long())
+            output = torch.argmax(output, dim=-1)
+            tgt[word_index] = output[0][word_index]
+
+        return output
+
+
+transformer = Transformer(num_tokens=len(text_init.learn_dict),
                           seq_length=text_init.TEXT_LENTH,
                           d_model=512)
 optimizer = torch.optim.AdamW(transformer.parameters(),

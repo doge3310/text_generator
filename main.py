@@ -2,31 +2,22 @@
 """
 import torch
 import AI_init as ai
+import regex as re
 import AI_learn
 import text_init
 
 
-def generate_text():
+def generate(start_text: str):
+    start_text = re.sub(r'[^\pL\p{Space}]', '', start_text)
+    start_text = start_text.lower().replace("/n", "").split(" ")
+    start_text = [text_init.learn_dict.index(i) for i in start_text]
+
     with torch.no_grad():
-        pass
+        output = ai.transformer.generate(src=start_text)
+        text = [text_init.learn_dict[item.tolist()] for item in output[0]]
+
+    return " ".join(text), len(text)
 
 
 if __name__ == "__main__":
-    print(generate_text())
-
-
-# y_pred = torch.tensor(rlt.three_gramm_l[-1], dtype=torch.float32)
-# x = torch.tensor(rlt.three_gramm_l[-2], dtype=torch.float32)
-# test_text = []
-
-# print(x, y_pred)
-
-# for index in range(10):
-#     x = y_pred
-#     y_pred = NN.forward(x)
-#     closest_embeding = apps.find_closest_underlist(y_pred.tolist(), rlt.three_gramm_l)
-#     closest_index = rlt.three_gramm_l.index(closest_embeding)
-
-#     test_text.append(rlt.n_gramm_l[closest_index])
-
-# print(test_text)
+    print(generate("В результате пользователь сможет получать"))
