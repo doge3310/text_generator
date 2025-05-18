@@ -1,12 +1,14 @@
 import regex as re
+import torch
 
 
-def tokenize(text: str, batch_size: int):
+def tokenize(text: str, batch_size: int, stride: int):
     """generate tokenized text and dict
 
     Args:
         text (str): row text
         batch_size (int): size of batch
+        stride (int): lenth of window in Strided Segmentation
 
     Returns:
         (list):
@@ -21,7 +23,7 @@ def tokenize(text: str, batch_size: int):
 
     elements = [word_indices[i: i + batch_size] +
                 ([0] * (batch_size - len(word_indices[i: i + batch_size])))
-                for i in range(0, len(word_indices), batch_size)]
+                for i in range(0, len(word_indices), stride)]
 
     source = [elements[i: i + batch_size]
               for i in range(0, len(elements), batch_size)]
@@ -31,5 +33,6 @@ def tokenize(text: str, batch_size: int):
 
 file = open("./AI.txt", "r", encoding="utf-8")
 learning_text = file.read()
-TEXT_LENTH = 60
-src, learn_dict = tokenize(learning_text, TEXT_LENTH)
+TEXT_LENTH = 20
+STRIDE = 5
+src, learn_dict = tokenize(learning_text, TEXT_LENTH, STRIDE)

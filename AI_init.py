@@ -32,16 +32,18 @@ class Transformer(torch.nn.Module):
         self.d_model = d_model
         self.seq_lenth = seq_length
         self.num_tokens = num_tokens
+        mask = torch.triu(torch.ones(seq_length, seq_length), diagonal=1)
+        self.mask = mask.masked_fill(mask == 1, float('-inf'))
 
         self.token_emb = nn.Embedding(num_tokens, d_model)
         self.pos_emb = PositionalEncoding(d_model, seq_length)
 
-        self.transformer = torch.nn.Transformer(num_encoder_layers=2,
-                                                num_decoder_layers=2,
-                                                dim_feedforward=256,
-                                                dropout=0.3,
+        self.transformer = torch.nn.Transformer(num_encoder_layers=6,
+                                                num_decoder_layers=6,
+                                                dim_feedforward=2048,
+                                                dropout=0.5,
                                                 d_model=d_model,
-                                                nhead=4,
+                                                nhead=8,
                                                 batch_first=True)
 
         self.ff = nn.Linear(d_model, num_tokens)
@@ -49,6 +51,7 @@ class Transformer(torch.nn.Module):
     def forward(self, src, tgt):
         src = self.token_emb(src)
         src = self.pos_emb(src)
+        src = src + self.mask
 
         tgt = self.token_emb(tgt)
         tgt = self.pos_emb(tgt)
@@ -69,12 +72,12 @@ class Transformer(torch.nn.Module):
             output = torch.argmax(output, dim=-1)
             tgt[word_index] = output[0][word_index]
 
-        return output
+        return tgt
 
 
 transformer = Transformer(num_tokens=len(text_init.learn_dict),
                           seq_length=text_init.TEXT_LENTH,
                           d_model=512)
 optimizer = torch.optim.AdamW(transformer.parameters(),
-                              lr=0.001)
+                              lr=3e-4)
 loss = torch.nn.CrossEntropyLoss()
