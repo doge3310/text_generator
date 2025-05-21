@@ -7,7 +7,22 @@ import AI_learn
 import text_init
 
 
-def generate(start_text: str):
+def generate_tokens(src):
+    tgt = src + [0 for _ in range(text_init.TEXT_LENTH - len(src))]
+    tgt = torch.tensor(tgt)
+    src = tgt
+
+    for word_index in range(len(src) - text_init.TEXT_LENTH,
+                            text_init.TEXT_LENTH - 1):
+        output = ai.transformer(src,
+                                tgt.long())
+        output = torch.argmax(output, dim=-1)
+        tgt[word_index] = output[0][word_index]
+
+    return tgt
+
+
+def generate_text(start_text: str):
     """generate teext from start text
 
     Args:
@@ -23,12 +38,11 @@ def generate(start_text: str):
     start_text = [text_init.learn_dict.index(i) for i in start_text]
 
     with torch.no_grad():
-        output = ai.transformer.generate(src=start_text)
-        print(output)
+        output = generate_tokens(start_text)
         text = [text_init.learn_dict[item.tolist()] for item in output]
 
     return " ".join(text)
 
 
 if __name__ == "__main__":
-    print(generate("в результате пользователь сможет получать"))
+    print(generate_text("в результате пользователь сможет получать"))

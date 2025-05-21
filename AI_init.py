@@ -4,6 +4,97 @@ from torch import nn
 import text_init
 
 
+class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, num_heads):
+        super().__init__()
+
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
+
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+
+    def scaled_dot_product_attention(self, Q, K, V, mask=None):
+        attn_scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(self.d_k)
+
+        if mask is not None:
+            attn_scores = attn_scores.masked_fill(mask == 0, -1e9)
+
+        attn_probs = torch.softmax(attn_scores, dim=-1)
+        output = torch.matmul(attn_probs, V)
+
+        return output
+
+    def split_heads(self, x):
+        batch_size, seq_length, d_model = x.size()
+        return x.view(batch_size, seq_length, self.num_heads, self.d_k).transpose(1, 2)
+
+    def combine_heads(self, x):
+        batch_size, _, seq_length, d_k = x.size()
+        return x.transpose(1, 2).contiguous().view(batch_size, seq_length, self.d_model)
+
+    def forward(self, Q, K, V, mask=None):
+        Q = self.split_heads(self.W_q(Q))
+        K = self.split_heads(self.W_k(K))
+        V = self.split_heads(self.W_v(V))
+
+        attn_output = self.scaled_dot_product_attention(Q, K, V, mask)
+
+        output = self.W_o(self.combine_heads(attn_output))
+
+        return output
+
+
+class EncoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout):
+        super(EncoderLayer, self).__init__()
+        self.self_attn = MultiHeadAttention(d_model, num_heads)
+        self.feed_forward = nn.Sequential(nn.Linear(d_model, d_ff),
+                                          nn.ReLU(),
+                                          nn.Linear(d_ff, d_model))
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, mask):
+        attn_output = self.self_attn(x, x, x, mask)
+        x = self.norm1(x + self.dropout(attn_output))
+
+        ff_output = self.feed_forward(x)
+        x = self.norm2(x + self.dropout(ff_output))
+
+        return x
+
+
+class DecoderLayer(nn.Module):
+    def __init__(self, d_model, num_heads, d_ff, dropout):
+        super(DecoderLayer, self).__init__()
+        self.self_attn = MultiHeadAttention(d_model, num_heads)
+        self.cross_attn = MultiHeadAttention(d_model, num_heads)
+        self.feed_forward = nn.Sequential(nn.Linear(d_model, d_ff),
+                                          nn.ReLU(),
+                                          nn.Linear(d_ff, d_model))
+        self.norm1 = nn.LayerNorm(d_model)
+        self.norm2 = nn.LayerNorm(d_model)
+        self.norm3 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, enc_output, src_mask, tgt_mask):
+        attn_output = self.self_attn(x, x, x, tgt_mask)
+        x = self.norm1(x + self.dropout(attn_output))
+
+        attn_output = self.cross_attn(x, enc_output, enc_output, src_mask)
+        x = self.norm2(x + self.dropout(attn_output))
+
+        ff_output = self.feed_forward(x)
+        x = self.norm3(x + self.dropout(ff_output))
+
+        return x
+
+
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, seq_length):
         super(PositionalEncoding, self).__init__()
@@ -32,47 +123,41 @@ class Transformer(torch.nn.Module):
         self.d_model = d_model
         self.seq_lenth = seq_length
         self.num_tokens = num_tokens
-        mask = torch.triu(torch.ones(seq_length, seq_length), diagonal=1)
-        self.mask = mask.masked_fill(mask == 1, float('-inf'))
 
         self.token_emb = nn.Embedding(num_tokens, d_model)
         self.pos_emb = PositionalEncoding(d_model, seq_length)
-
-        self.transformer = torch.nn.Transformer(num_encoder_layers=6,
-                                                num_decoder_layers=6,
-                                                dim_feedforward=2048,
-                                                dropout=0.5,
-                                                d_model=d_model,
-                                                nhead=8,
-                                                batch_first=True)
+        self.decoder_layer = DecoderLayer(d_model=d_model,
+                                          num_heads=8,
+                                          d_ff=2048,
+                                          dropout=0.5)
+        self.encoder_layer = EncoderLayer(d_model=d_model,
+                                          num_heads=8,
+                                          d_ff=2048,
+                                          dropout=0.5)
 
         self.ff = nn.Linear(d_model, num_tokens)
 
+    def generate_mask(self, src, tgt):
+        nopeak_mask = (1 - torch.triu(torch.ones(1,
+                                                 self.seq_lenth,
+                                                 self.seq_lenth),
+                                      diagonal=1)).bool()
+        tgt_mask = tgt & nopeak_mask
+
+        return src, tgt_mask.squeeze(0)
+
     def forward(self, src, tgt):
-        src = self.token_emb(src)
-        src = self.pos_emb(src)
-        src = src + self.mask
+        src_mask, tgt_mask = self.generate_mask(src, tgt)
 
-        tgt = self.token_emb(tgt)
-        tgt = self.pos_emb(tgt)
+        src = self.pos_emb(self.token_emb(src_mask))
+        tgt = self.pos_emb(self.token_emb(tgt_mask))
 
-        result = self.transformer(src, tgt)
-        result = self.ff(result)
+        src = self.encoder_layer(src, src_mask)
+        tgt = self.decoder_layer(tgt, src, src_mask, tgt_mask)
+
+        result = self.ff(tgt)
 
         return result
-
-    def generate(self, src):
-        tgt = src + [0 for _ in range(self.seq_lenth - len(src))]
-        tgt = torch.tensor(tgt)
-        src = tgt
-
-        for word_index in range(len(src) - self.seq_lenth, self.seq_lenth - 1):
-            output = self.forward(src,
-                                  tgt.long())
-            output = torch.argmax(output, dim=-1)
-            tgt[word_index] = output[0][word_index]
-
-        return tgt
 
 
 transformer = Transformer(num_tokens=len(text_init.learn_dict),
