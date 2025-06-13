@@ -1,6 +1,7 @@
 import math
 import torch
 from torch import nn
+from torchinfo import summary
 import text_init
 
 
@@ -53,7 +54,8 @@ class EncoderLayer(nn.Module):
         super(EncoderLayer, self).__init__()
         self.self_attn = MultiHeadAttention(d_model, num_heads)
         self.feed_forward = nn.Sequential(nn.Linear(d_model, d_ff),
-                                          nn.ReLU(),
+                                          nn.Dropout(p=0.2),
+                                          nn.GELU(),
                                           nn.Linear(d_ff, d_model))
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -75,7 +77,8 @@ class DecoderLayer(nn.Module):
         self.self_attn = MultiHeadAttention(d_model, num_heads)
         self.cross_attn = MultiHeadAttention(d_model, num_heads)
         self.feed_forward = nn.Sequential(nn.Linear(d_model, d_ff),
-                                          nn.ReLU(),
+                                          nn.Dropout(p=0.2),
+                                          nn.GELU(),
                                           nn.Linear(d_ff, d_model))
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
@@ -123,17 +126,21 @@ class Transformer(torch.nn.Module):
         self.d_model = d_model
         self.seq_lenth = seq_length
         self.num_tokens = num_tokens
+        self.num_layers = 4
 
         self.token_emb = nn.Embedding(num_tokens, d_model)
         self.pos_emb = PositionalEncoding(d_model, seq_length)
-        self.decoder_layer = DecoderLayer(d_model=d_model,
-                                          num_heads=8,
-                                          d_ff=2048,
-                                          dropout=0.5)
-        self.encoder_layer = EncoderLayer(d_model=d_model,
-                                          num_heads=8,
-                                          d_ff=2048,
-                                          dropout=0.5)
+        self.decoder_layer = nn.ModuleList([DecoderLayer(d_model=d_model,
+                                           num_heads=4,
+                                           d_ff=512,
+                                           dropout=0.2)
+                                            for _ in range(self.num_layers)])
+
+        self.encoder_layer = nn.ModuleList([EncoderLayer(d_model=d_model,
+                                           num_heads=4,
+                                           d_ff=512,
+                                           dropout=0.2)
+                                            for _ in range(self.num_layers)])
 
         self.ff = nn.Linear(d_model, num_tokens)
 
@@ -152,8 +159,11 @@ class Transformer(torch.nn.Module):
         src = self.pos_emb(self.token_emb(src_mask))
         tgt = self.pos_emb(self.token_emb(tgt_mask))
 
-        src = self.encoder_layer(src, src_mask)
-        tgt = self.decoder_layer(tgt, src, src_mask, tgt_mask)
+        for index in range(self.num_layers):
+            src = self.encoder_layer[index](src, src_mask)
+
+        for index in range(self.num_layers):
+            tgt = self.decoder_layer[index](tgt, src, src_mask, tgt_mask)
 
         result = self.ff(tgt)
 
@@ -164,5 +174,10 @@ transformer = Transformer(num_tokens=len(text_init.learn_dict),
                           seq_length=text_init.TEXT_LENTH,
                           d_model=512)
 optimizer = torch.optim.AdamW(transformer.parameters(),
-                              lr=3e-4)
+                              lr=9e-5)
 loss = torch.nn.CrossEntropyLoss()
+
+
+if __name__ == "__main__":
+    random_data = torch.randn((65, 63))
+    summary(transformer, input_data=(random_data, random_data))

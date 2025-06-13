@@ -1,15 +1,13 @@
 import torch
 import AI_init
 import text_init as learn_t
-# import matplotlib.pyplot as plt
 
 
 source = learn_t.src[: -1]
 AI_init.transformer.train()
-loses = []
 
-for epoch in range(1):
-    for _, batch in enumerate(source):
+for epoch in range(20):
+    for batch, _ in enumerate(source):
         src = torch.tensor(source[batch][: -1], dtype=int)
         tgt = torch.tensor(source[batch][1:], dtype=int)
 
@@ -17,13 +15,14 @@ for epoch in range(1):
         output = AI_init.transformer(src=src,
                                      tgt=tgt)
 
-        print(torch.argmax(output, dim=-1))
+        print([f"{learn_t.learn_dict[i]} {i.item()}"
+               for i in torch.argmax(output, dim=-1)[0]])
+        # print(AI_init.transformer.state_dict())
 
         loss = AI_init.loss(output.view(-1, len(learn_t.learn_dict)),
                             tgt.view(-1))
+
         loss.backward()
         AI_init.optimizer.step()
-
-    loses.append(loss.detach().numpy())
 
     print(epoch, loss, src.size(), tgt.size(), output.size())

@@ -23,7 +23,7 @@ def generate_tokens(src):
 
 
 def generate_text(start_text: str):
-    """generate teext from start text
+    """generate text from start text
 
     Args:
         start_text (str): start text for generate
