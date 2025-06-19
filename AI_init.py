@@ -126,18 +126,18 @@ class Transformer(torch.nn.Module):
         self.d_model = d_model
         self.seq_lenth = seq_length
         self.num_tokens = num_tokens
-        self.num_layers = 4
+        self.num_layers = 2
 
         self.token_emb = nn.Embedding(num_tokens, d_model)
         self.pos_emb = PositionalEncoding(d_model, seq_length)
         self.decoder_layer = nn.ModuleList([DecoderLayer(d_model=d_model,
-                                           num_heads=4,
+                                           num_heads=2,
                                            d_ff=512,
                                            dropout=0.2)
                                             for _ in range(self.num_layers)])
 
         self.encoder_layer = nn.ModuleList([EncoderLayer(d_model=d_model,
-                                           num_heads=4,
+                                           num_heads=2,
                                            d_ff=512,
                                            dropout=0.2)
                                             for _ in range(self.num_layers)])
@@ -172,12 +172,12 @@ class Transformer(torch.nn.Module):
 
 transformer = Transformer(num_tokens=len(text_init.learn_dict),
                           seq_length=text_init.TEXT_LENTH,
-                          d_model=512)
+                          d_model=128)
 optimizer = torch.optim.AdamW(transformer.parameters(),
-                              lr=9e-5)
+                              lr=3e-4)
 loss = torch.nn.CrossEntropyLoss()
 
 
 if __name__ == "__main__":
-    random_data = torch.randn((65, 63))
+    random_data = torch.randint(low=0, high=2000, size=(20, 20))
     summary(transformer, input_data=(random_data, random_data))

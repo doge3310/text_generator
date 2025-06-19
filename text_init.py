@@ -3,7 +3,7 @@ import glob
 import torch
 
 
-def tokenize(text: str, batch_size: int, stride: int, word_freq: int):
+def tokenize(text: str, batch_size: int, stride: int):
     """generate tokenized text and dict
 
     Args:
@@ -27,11 +27,10 @@ def tokenize(text: str, batch_size: int, stride: int, word_freq: int):
         except KeyError:
             learn_list[word] = 1
 
-    words_count = list(learn_list.values())
     learn_list = list(learn_list.keys())
+    index_dict = {word: num for num, word in enumerate(learn_list)}
 
-    word_indices = [learn_list.index(word) for word in clear_text
-                    if words_count[learn_list.index(word)] <= word_freq]
+    word_indices = [index_dict[word] for word in clear_text]
 
     elements = [word_indices[i: i + batch_size] +
                 ([0] * (batch_size - len(word_indices[i: i + batch_size + 1])))
@@ -65,11 +64,14 @@ def check_dataset(text: str):
 
 learning_text = str()
 
-for file_path in glob.glob("./texts" + "**/*.txt")[: 3000]:
+for file_path in glob.glob("./texts" + "**/*.txt")[: 1000]:
     with open(file_path, mode="r", encoding="UTF-8") as file:
         learning_text += " " + file.read()
 
-TEXT_LENTH = 64
-STRIDE = 16
-FREQ = 40
-src, learn_dict = tokenize(learning_text, TEXT_LENTH, STRIDE, FREQ)
+TEXT_LENTH = 20
+STRIDE = 5
+src, learn_dict = tokenize(learning_text, TEXT_LENTH, STRIDE)
+
+
+if __name__ == "__main__":
+    print(torch.tensor(src[: -1]).size(), len(learn_dict))
